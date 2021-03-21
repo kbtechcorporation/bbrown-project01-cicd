@@ -1,0 +1,52 @@
+version: '3.8'
+services:
+
+##########################################################################
+#  CORE SERVICES
+##########################################################################
+  nginx:
+    image: ${NGINX}
+    restart: unless-stopped
+    networks:
+      - simplilearn
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./conf/:/etc/nginx/:ro
+
+##########################################################################
+#  CI/CD Application(s) and Service(s)
+##########################################################################
+  jenkins:
+    container_name: jenkins
+    image: ${JENKINS}
+    restart: unless-stopped
+    networks:
+      - simplilearn
+    ports:
+      - "8080:8080"
+    volumes:
+      - jenkins_data:/var/jenkins_home:z
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /usr/bin/docker:/usr/bin/docker
+
+##########################################################################
+#  Project Application(s) and Service(s)
+##########################################################################
+  inventory-management:
+    container_name: inventory-management
+    image: ${INVENTORY_MANAGER}
+    restart: unless-stopped
+    networks:
+      - simplilearn
+    ports:
+      - "3000:3000"
+
+
+volumes:
+  jenkins_data:
+
+networks:
+  simplilearn:
+    driver: bridge
