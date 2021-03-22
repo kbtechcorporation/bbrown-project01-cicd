@@ -12,6 +12,7 @@ pipeline {
         IMAGE_NAME = "bbrowncaltech/inventory-manager"
         DOCKERFILE_NAME = "Express.API.Dockerfile"
         SERVICE_NAME = "inventory-management"
+        DOCKER_IMAGE = ''
     }
     stages {
         stage('Stop Service') {
@@ -20,11 +21,10 @@ pipeline {
             }
         }
         stage('Build Docker Image') {
-            environment {
-               IMAGE_TAG = sh(script: 'node -p -e "require(\'./api/package.json\').version"', , returnStdout: true).trim()
-            }
             steps {
-                sh "docker build -f ./${GIT_API_PATH}/${DOCKERFILE_NAME} -t ${IMAGE_NAME}:${IMAGE_TAG} ./${GIT_API_PATH}/"
+               script {
+                   DOCKER_IMAGE = docker.build("${IMAGE_NAME}", "-f ./${GIT_API_PATH}/${DOCKERFILE_NAME} ./${GIT_API_PATH}/")
+               }
             }
         }
         stage('Restart Service') {
@@ -42,7 +42,11 @@ pipeline {
                IMAGE_TAG = sh(script: 'node -p -e "require(\'./api/package.json\').version"', , returnStdout: true).trim()
             }
             steps {
-                sh "docker push ${IMAGE_NAME}:${IMAGE_TAG}"
+                script {
+                    docker.withRegistry( '', 'Docker-Hub' ) {
+                        DOCKER_IMAGE.push("$IMAGE_TAG")
+                    }
+                }
             }
         }
     }
