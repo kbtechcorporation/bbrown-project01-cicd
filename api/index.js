@@ -11,15 +11,33 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(upload.array());
 
-//  Add Inventory Management Endpoints
-var inventory = require('./resources/inventory.js');
-
-app.use('/inventory', inventory);
-
 //  Add swagger UI
 var swaggerUi = require('swagger-ui-express');
 var swaggerDocument = require('./swagger/swagger.json');
 
-app.use('/', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+//  Get Environment Variables
+var prefix = process.env.PREFIX;
+var swaggerUrl = process.env.SWAGGER_SERVER_URL;
+
+console.info('Retrieving Prefix: ', prefix);
+console.info('Retrieving Swagger URL: ', swaggerUrl);
+
+prefix = (!prefix ? '' : prefix);
+swaggerUrl = (!swaggerUrl ? 'http://localhost:3000' : swaggerUrl);
+
+console.info('Final Prefix: ', prefix);
+console.info('Final Swagger URL: ', swaggerUrl);
+
+console.info('Setting Swagger Server URL');
+swaggerDocument.servers = [{'url': swaggerUrl}];
+
+app.use(`${prefix}/api-docs`, swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+
+
+//  Add Inventory Management Endpoints
+var inventory = require('./resources/inventory.js');
+
+app.use(`${prefix}/inventory`, inventory);
+
 
 app.listen(3000);

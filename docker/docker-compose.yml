@@ -5,6 +5,7 @@ services:
 #  CORE SERVICES
 ##########################################################################
   nginx:
+    container_name: nginx
     image: ${NGINX}
     restart: unless-stopped
     networks:
@@ -13,7 +14,7 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ./conf/:/etc/nginx/:ro
+      - ./config/:/etc/nginx/:ro
 
 ##########################################################################
 #  CI/CD Application(s) and Service(s)
@@ -26,6 +27,9 @@ services:
       - simplilearn
     ports:
       - "8080:8080"
+      - "50000:50000"
+    environment:
+      JENKINS_OPTS: "--prefix=/jenkins"
     volumes:
       - jenkins_data:/var/jenkins_home:z
       - /var/run/docker.sock:/var/run/docker.sock
@@ -42,6 +46,9 @@ services:
       - simplilearn
     ports:
       - "3000:3000"
+    environment:
+      PREFIX: '/inventory-management'
+      SWAGGER_SERVER_URL: 'https://localhost/inventory-management'
 
 
 volumes:
