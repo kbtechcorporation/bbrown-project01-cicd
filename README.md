@@ -380,11 +380,11 @@ router.get('/', function(req, res) {
 #### api/Express.API.Dockerfile
 
 ```Dockerfile
-######################################################################################################################################
+##################################################################
 #   Author: BBrown
 #   Date: 03/20/2021
 #   Description: Serves as the default build image
-######################################################################################################################################
+##################################################################
 FROM ubuntu
 
 EXPOSE 3000
@@ -423,5 +423,154 @@ RUN chown -R expressapi:docker /app
 USER expressapi
 
 ENTRYPOINT [ "node", "/app/index.js" ]
+
+```
+
+<br />
+
+#### docker/.env
+
+```bash
+################################################################################################
+#       3RD PARTY IMAGES
+################################################################################################
+NGINX=nginx:latest
+JENKINS=jenkins/jenkins:latest
+
+################################################################################################
+#       PROJECT 01 IMAGES
+################################################################################################
+INVENTORY_MANAGER=bbrowncaltech/inventory-manager:0.1.1
+
+```
+
+<br />
+
+#### docker/docker-compose.yml
+
+```yaml
+version: '3.8'
+services:
+
+##########################################################################
+#  CORE SERVICES
+##########################################################################
+  nginx:
+    container_name: nginx
+    image: ${NGINX}
+    restart: unless-stopped
+    networks:
+      - simplilearn
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./config/:/etc/nginx/:ro
+
+##########################################################################
+#  CI/CD Application(s) and Service(s)
+##########################################################################
+  jenkins:
+    container_name: jenkins
+    image: ${JENKINS}
+    user: root
+    restart: unless-stopped
+    networks:
+      - simplilearn
+    ports:
+      - "8080:8080"
+      - "50000:50000"
+    environment:
+      JENKINS_OPTS: "--prefix=/jenkins"
+    volumes:
+      - jenkins_data:/var/jenkins_home:z
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /usr/bin/docker:/usr/bin/docker
+      - /usr/local/bin/docker-compose:/usr/local/bin/docker-compose
+
+##########################################################################
+#  Project Application(s) and Service(s)
+##########################################################################
+  inventory-management:
+    container_name: inventory-management
+    image: ${INVENTORY_MANAGER}
+    restart: unless-stopped
+    networks:
+      - simplilearn
+    ports:
+      - "3000:3000"
+    environment:
+      PREFIX: '/inventory-management'
+      SWAGGER_SERVER_URL: 'https://localhost/inventory-management'
+
+
+volumes:
+  jenkins_data:
+
+networks:
+  simplilearn:
+    driver: bridge
+
+```
+
+<br />
+
+#### Jenkinsfile
+
+```bash
+pipeline {
+    agent {
+        label 'master'
+    }
+    tools {
+        nodejs "node"
+    }
+    environment {
+        GIT_BASE_PATH = "bbrown-project01-cicd"
+        GIT_API_PATH = "api"
+        GIT_DOCKER_PATH = "docker"
+        IMAGE_NAME = "bbrowncaltech/inventory-manager"
+        DOCKERFILE_NAME = "Express.API.Dockerfile"
+        SERVICE_NAME = "inventory-management"
+        DOCKER_IMAGE = ''
+    }
+    stages {
+        stage('Stop Service') {
+            steps {
+                sh "/usr/local/bin/docker-compose -f ./${GIT_DOCKER_PATH}/docker-compose.yml rm -f -s ${SERVICE_NAME}"
+            }
+        }
+        stage('Build Docker Image') {
+            steps {
+               script {
+                   DOCKER_IMAGE = docker.build("${IMAGE_NAME}", "-f ./${GIT_API_PATH}/${DOCKERFILE_NAME} ./${GIT_API_PATH}/")
+               }
+            }
+        }
+        stage('Restart Service') {
+            steps {
+                sh "/usr/local/bin/docker-compose -f ./${GIT_DOCKER_PATH}/docker-compose.yml up -d ${SERVICE_NAME}"
+            }
+        }
+        stage('Push Docker Image') {
+            when {
+                anyOf {
+                    branch "main"
+                }
+            }
+            environment {
+               IMAGE_TAG = sh(script: 'node -p -e "require(\'./api/package.json\').version"', , returnStdout: true).trim()
+            }
+            steps {
+                script {
+                    docker.withRegistry( '', 'Docker-Hub' ) {
+                        DOCKER_IMAGE.push("$IMAGE_TAG")
+                    }
+                }
+            }
+        }
+    }
+    
+}
 
 ```
