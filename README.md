@@ -574,3 +574,97 @@ pipeline {
 }
 
 ```
+
+<br />
+
+#### docker/config/nginx.conf
+
+```bash
+events {}
+
+http {
+
+    upstream jenkins {
+        server jenkins:8080;
+    }
+
+    upstream inventory-management {
+        server inventory-management:3000;
+    }
+
+    # Support hhttp2/ websocket handshakes
+    map $http_upgrade $connection_upgrade {
+        default upgrade;
+        '' close;
+    }
+
+
+    # redirect http to https
+    server {
+        listen 80 default_server;
+        server_name localhost;
+        return 301 https://$host$request_uri;
+    }
+
+    server {
+
+        listen 443  ssl http2;
+        listen [::]:443  ssl http2;
+
+        server_name localhost;
+
+        # Support only TLSv1.2
+        ssl_protocols TLSv1.2;
+        ssl_certificate                        /etc/nginx/localhost.pem;
+        ssl_certificate_key                    /etc/nginx/localhost.key;
+        ssl_client_certificate                 /etc/nginx/localhost.crt;
+        ssl_verify_client optional_no_ca;
+        ssl_verify_depth 3;
+        recursive_error_pages on;
+
+        location ~ ^/$ {
+            return 301 https://localhost/jenkins;
+        }
+
+        location /jenkins {
+            proxy_set_header        Host $host:$server_port;
+            proxy_set_header        X-Real-IP $remote_addr;
+            proxy_set_header        X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header        X-Forwarded-Proto $scheme;
+
+            proxy_pass http://jenkins;
+            proxy_read_timeout  90;
+
+            # Fix the “It appears that your reverse proxy set up is broken" error.
+            proxy_redirect http://jenkins https://localhost/jenkins;
+
+            # Required for new HTTP-based CLI
+            proxy_http_version 1.1;
+            proxy_request_buffering off;
+            # workaround for https://issues.jenkins-ci.org/browse/JENKINS-45651
+            add_header 'X-SSH-Endpoint' 'localhost:50022' always;
+        }
+
+        location /inventory-management {
+            
+            proxy_set_header        Host $host:$server_port;
+            proxy_set_header        X-Real-IP $remote_addr;
+            proxy_set_header        X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header        X-Forwarded-Proto $scheme;
+
+            proxy_pass http://inventory-management;
+            proxy_read_timeout  90;
+
+            # Fix the “It appears that your reverse proxy set up is broken" error.
+            proxy_redirect http://inventory-management https://localhost/inventory-management;
+
+            # Required for new HTTP-based CLI
+            proxy_http_version 1.1;
+            proxy_request_buffering off;
+        }
+
+    }
+
+}
+
+```
