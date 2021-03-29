@@ -28,7 +28,7 @@ pipeline {
                    //   Development Testing/Deployment
                    IMAGE_TAG = "develop";
                    //   Production Deployment
-                   if ((BRANCH_NAME ==~/(0-9\.0-9\.0-9)/)) {
+                   if ((BRANCH_NAME ==~/^(\d+\.\d+\.\d+)/)) {
                        IMAGE_TAG = BRANCH_NAME;
                    }
                    //   UAT Deployment
