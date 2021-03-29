@@ -24,6 +24,8 @@ services:
     image: ${JENKINS}
     user: root
     restart: unless-stopped
+    depends_on:
+      - nginx
     networks:
       - simplilearn
     ports:
@@ -42,7 +44,7 @@ services:
 ##########################################################################
   inventory-management:
     container_name: inventory-management
-    image: ${INVENTORY_MANAGER}
+    image: ${INVENTORY_MANAGER}:${INV_TAG}
     restart: unless-stopped
     networks:
       - simplilearn
