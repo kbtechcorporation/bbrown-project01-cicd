@@ -548,11 +548,11 @@ pipeline {
                    //   Development Testing/Deployment
                    IMAGE_TAG = "develop";
                    //   Production Deployment
-                   if (!(BRANCH_NAME ==~/(0-9\.0-9\.0-9)/)) {
+                   if ((BRANCH_NAME ==~/(0-9\.0-9\.0-9)/)) {
                        IMAGE_TAG = BRANCH_NAME;
                    }
                    //   UAT Deployment
-                   if (!(BRANCH_NAME ==~/(main)/)) {
+                   if ((BRANCH_NAME ==~/(main)/)) {
                        IMAGE_TAG = "latest";
                    }
                }
